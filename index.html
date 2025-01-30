@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Attendance Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-[Inter]">
+    <div class="min-h-screen">
+        <nav class="bg-blue-600 text-white p-4">
+            <h1 class="text-2xl font-bold">College Attendance System</h1>
+        </nav>
+
+        <div class="container mx-auto p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Students Management -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Student Management</h2>
+                    <form id="studentForm" class="space-y-4">
+                        <input type="text" id="studentName" placeholder="Student Name" class="w-full p-2 border rounded">
+                        <input type="text" id="studentId" placeholder="Student ID" class="w-full p-2 border rounded">
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">Add Student</button>
+                    </form>
+                    <div id="studentList" class="mt-4 space-y-2"></div>
+                </div>
+
+                <!-- Subjects Management -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Subject Management</h2>
+                    <form id="subjectForm" class="space-y-4">
+                        <input type="text" id="subjectName" placeholder="Subject Name" class="w-full p-2 border rounded">
+                        <input type="text" id="subjectCode" placeholder="Subject Code" class="w-full p-2 border rounded">
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">Add Subject</button>
+                    </form>
+                    <div id="subjectList" class="mt-4 space-y-2"></div>
+                </div>
+
+                <!-- Attendance Marking -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Mark Attendance</h2>
+                    <form id="attendanceForm" class="space-y-4">
+                        <select id="selectSubject" class="w-full p-2 border rounded">
+                            <option value="">Select Subject</option>
+                        </select>
+                        <input type="date" id="attendanceDate" class="w-full p-2 border rounded">
+                        <div id="attendanceList" class="space-y-2"></div>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">Save Attendance</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Attendance Record -->
+            <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4">Attendance Record</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full table-auto">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="px-4 py-2">Date</th>
+                                <th class="px-4 py-2">Subject</th>
+                                <th class="px-4 py-2">Present</th>
+                                <th class="px-4 py-2">Absent</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceRecord"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize local storage if empty
+        if (!localStorage.getItem('students')) localStorage.setItem('students', '[]');
+        if (!localStorage.getItem('subjects')) localStorage.setItem('subjects', '[]');
+        if (!localStorage.getItem('attendance')) localStorage.setItem('attendance', '[]');
+
+        // Get DOM elements
+        const studentForm = document.getElementById('studentForm');
+        const subjectForm = document.getElementById('subjectForm');
+        const attendanceForm = document.getElementById('attendanceForm');
+        const studentList = document.getElementById('studentList');
+        const subjectList = document.getElementById('subjectList');
+        const selectSubject = document.getElementById('selectSubject');
+        const attendanceList = document.getElementById('attendanceList');
+        const attendanceRecord = document.getElementById('attendanceRecord');
+
+        // Add Student
+        studentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('studentName').value;
+            const id = document.getElementById('studentId').value;
+            if (!name || !id) return;
+
+            const students = JSON.parse(localStorage.getItem('students'));
+            students.push({ name, id });
+            localStorage.setItem('students', JSON.stringify(students));
+            
+            displayStudents();
+            studentForm.reset();
+        });
+
+        // Add Subject
+        subjectForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('subjectName').value;
+            const code = document.getElementById('subjectCode').value;
+            if (!name || !code) return;
+
+            const subjects = JSON.parse(localStorage.getItem('subjects'));
+            subjects.push({ name, code });
+            localStorage.setItem('subjects', JSON.stringify(subjects));
+            
+            displaySubjects();
+            updateSubjectSelect();
+            subjectForm.reset();
+        });
+
+        // Mark Attendance
+        attendanceForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const subject = selectSubject.value;
+            const date = document.getElementById('attendanceDate').value;
+            if (!subject || !date) return;
+
+            const attendance = [];
+            const checkboxes = document.querySelectorAll('[name="attendance"]');
+            checkboxes.forEach(checkbox => {
+                attendance.push({
+                    studentId: checkbox.value,
+                    present: checkbox.checked
+                });
+            });
+
+            const attendanceData = JSON.parse(localStorage.getItem('attendance'));
+            attendanceData.push({ date, subject, attendance });
+            localStorage.setItem('attendance', JSON.stringify(attendanceData));
+            
+            displayAttendanceRecord();
+            attendanceForm.reset();
+            attendanceList.innerHTML = '';
+        });
+
+        // Display Functions
+        function displayStudents() {
+            const students = JSON.parse(localStorage.getItem('students'));
+            studentList.innerHTML = students.map(student => 
+                `<div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                    <span>${student.name} (${student.id})</span>
+                    <button onclick="deleteStudent('${student.id}')" class="text-red-600">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>`
+            ).join('');
+            updateAttendanceList();
+        }
+
+        function displaySubjects() {
+            const subjects = JSON.parse(localStorage.getItem('subjects'));
+            subjectList.innerHTML = subjects.map(subject => 
+                `<div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                    <span>${subject.name} (${subject.code})</span>
+                    <button onclick="deleteSubject('${subject.code}')" class="text-red-600">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>`
+            ).join('');
+        }
+
+        function updateSubjectSelect() {
+            const subjects = JSON.parse(localStorage.getItem('subjects'));
+            selectSubject.innerHTML = '<option value="">Select Subject</option>' +
+                subjects.map(subject => 
+                    `<option value="${subject.code}">${subject.name}</option>`
+                ).join('');
+        }
+
+        function updateAttendanceList() {
+            selectSubject.addEventListener('change', () => {
+                const students = JSON.parse(localStorage.getItem('students'));
+                attendanceList.innerHTML = students.map(student =>
+                    `<div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                        <span>${student.name}</span>
+                        <input type="checkbox" name="attendance" value="${student.id}" class="h-5 w-5">
+                    </div>`
+                ).join('');
+            });
+        }
+
+        function displayAttendanceRecord() {
+            const attendanceData = JSON.parse(localStorage.getItem('attendance'));
+            attendanceRecord.innerHTML = attendanceData.map(record => {
+                const present = record.attendance.filter(a => a.present).length;
+                const absent = record.attendance.filter(a => !a.present).length;
+                return `
+                    <tr class="border-b">
+                        <td class="px-4 py-2">${record.date}</td>
+                        <td class="px-4 py-2">${record.subject}</td>
+                        <td class="px-4 py-2">${present}</td>
+                        <td class="px-4 py-2">${absent}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Delete Functions
+        function deleteStudent(id) {
+            let students = JSON.parse(localStorage.getItem('students'));
+            students = students.filter(student => student.id !== id);
+            localStorage.setItem('students', JSON.stringify(students));
+            displayStudents();
+        }
+
+        function deleteSubject(code) {
+            let subjects = JSON.parse(localStorage.getItem('subjects'));
+            subjects = subjects.filter(subject => subject.code !== code);
+            localStorage.setItem('subjects', JSON.stringify(subjects));
+            displaySubjects();
+            updateSubjectSelect();
+        }
+
+        // Initial Display
+        displayStudents();
+        displaySubjects();
+        updateSubjectSelect();
+        displayAttendanceRecord();
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
